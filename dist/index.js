@@ -75,25 +75,18 @@ const jsConfetti = new JSConfetti({ backgroundCanvas });
     }
   };
 
+  wheel.onWin = () => {
+    jsConfetti.addConfetti();
+  };
   
   await wheel.build();
 
   wheel.setPrizes(prizes);
 
-  var rotatedCount = 0;
-
-  wheel.onWin = () => {
-    jsConfetti.addConfetti();
-    rotatedCount++;
-  };
-
-  wheel.onLose = () => {
-    rotatedCount++;
-  };
-
   wheel.onClickStart = () => {
-    if (rotatedCount == 2) wheel.runSelected(3);
-    else if (rotatedCount > 2) wheel.runRandom();
+    if (wheel.spinsStorage.maxSpins == 0) return wheel.runRandom();
+    if (wheel.spinsStorage.balance == 0) wheel.runSelected(3);
     else wheel.runLose();
   };
+
 })();

@@ -8,13 +8,17 @@ class Wheel extends EventEmitter {
    * 
    * @param {String | Canvas} canvas HTML элемент с канвасом или ID канваса 
    */
-  constructor(canvas, frames, width = 500) {
+  constructor(canvas, frames, width = 500, height, shiftHeight = 0) {
     super();
     if (typeof canvas === 'string') this.canvas = document.getElementById(canvas);
     else this.canvas = canvas;
 
     this.canvas.width = width;
-    this.canvas.height = width;
+    if (!height) this.canvas.height = width;
+    else this.canvas.height = height;
+
+    this.shiftHeight = shiftHeight;
+
     this.prizes = {};
     this.frames = frames;
     this.wheelAssetImage = null;
@@ -27,11 +31,16 @@ class Wheel extends EventEmitter {
     this.bracketAnimation = new Animation(0, 100, 4, false, true);
     this.spinAnimation = new Animation(0, 360, 3, false, false);
     this.spinButtonClick = false;
+    this.bannerSpins = 0;
 
     this.onStart = function () {};
     this.drawFunction = function () {};
     this.setupModifySizes();
     // this.context.imageSmoothingEnabled = false;
+  }
+
+  get canvasHeightForRender() {
+    return this.canvas.height - this.shiftHeight;
   }
 
   async setWheelAsset(imgUrl) {
@@ -96,17 +105,12 @@ class Wheel extends EventEmitter {
     this.colides.on('click', objects => {
       if (objects.indexOf('spinButton') != -1) {
         if (!this.spinButtonClick) return;
-        
+
         this.disableSpinButton();
         this.canvas.style.cursor = 'pointer';
         this.onStart(this);
       }
     });
-  }
-
-  rotateContext(degree) {
-    this.context.translate(this.canvas.width / 2, this.canvas.height / 2);
-    this.context.rotate(degree * Math.PI/180);
   }
 
   drawFrame(frame, modifySize = 1, position = {}, flipX = false) {
@@ -119,7 +123,7 @@ class Wheel extends EventEmitter {
 
     if (position.x) dX = position.x;
     if (position.y) dY = position.y;
-    if (position.centrize) this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+    if (position.centrize) this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2); 
 
     if (!dX) dX = -(width * modifySize);
     if (!dY) dY = -(height * modifySize) / 2;
@@ -146,7 +150,7 @@ class Wheel extends EventEmitter {
 
       var prize = prizes[i];
 
-      this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+      this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2); 
       this.context.rotate(this._rotateAngle * Math.PI/180);
       this.context.rotate(180 * Math.PI/180);
       this.context.rotate(((prizesDegreeInterval * (i - 1))) * Math.PI/180);
@@ -195,12 +199,12 @@ class Wheel extends EventEmitter {
     if (!this.colides.findObject('spinButton')) {
       this.colides.addObject('spinButton', 
                             this.canvas.width / 2 + (-(button.frame.w * modifySizes) / 2),
-                            this.canvas.height / 2 + (-(button.frame.h * modifySizes) / 2),
+                            this.canvasHeightForRender / 2 + (-(button.frame.h * modifySizes) / 2),
                             button.frame.w * modifySizes,
                             button.frame.h * modifySizes);
     }
 
-    this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+    this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2); 
     this.context.rotate((this.spinButtonAnimation.currentStep / 6) * Math.PI/180);
 
     this.drawFrame(buttonText, modifySizes - 0.05 + this.spinButtonAnimation.currentStep / 400, { 
@@ -220,7 +224,7 @@ class Wheel extends EventEmitter {
         continue;
       }
 
-      this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+      this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2); 
       this.context.rotate(this._rotateAngle * Math.PI/180);
       this.context.rotate(((lightDegreeInterval * i) + lightDegreeInterval / 2) * Math.PI/180);
 
@@ -264,12 +268,12 @@ class Wheel extends EventEmitter {
     this._rotateAngle = this.spinAnimation.currentStep;
     var ring = this.frames['ring.png'];
 
-    this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+    this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2); 
     this.context.rotate(this._rotateAngle * Math.PI/180);
 
     this.drawFrame(ring, modifySizes);
 
-    this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+    this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2); 
     this.context.rotate(this._rotateAngle * Math.PI/180);
     this.context.rotate(180 * Math.PI/180);
 
@@ -281,11 +285,75 @@ class Wheel extends EventEmitter {
     this.drawSpinButton(modifySizes, ring);
   }
 
+  drawBanner(modifySize = 1) {
+    var banner = this.frames['flag.png'];
+    var ring = this.frames['ring.png'];
+    var bannerY = (ring.frame.h / 2 - 125);
+
+    this.drawFrame(banner, modifySize, {
+      x: -(banner.frame.w / 2) * modifySize,
+      y: bannerY * modifySize,
+      centrize: true
+    });
+
+    this.drawText(`YOU HAVE ${this.bannerSpins} LUCKY SPINS`, 36, 'white', 'MontserratBold', {
+      y: (bannerY + 270 * modifySize) * modifySize,
+      centrize: true
+    });
+
+    this.drawText('TRY NOW', 28, 'white', 'MontserratBold', {
+      y: (bannerY + 330 * modifySize) * modifySize,
+      centrize: true
+    });
+  }
+
+  drawText(text, size, color, font, options) {
+    if (options.centrize) {
+      this.context.translate(this.canvas.width / 2, this.canvasHeightForRender / 2);
+    }
+
+    size = size * this.modifySizes;
+
+    this.context.fillStyle = color;
+    this.context.font = size + 'px ' + font;
+
+    var measure = this.context.measureText(text);
+
+    var x = -(measure.width / 2);
+    var y = -(size * 2);
+
+    if (options.x) x = options.x;
+    if (options.y) y = options.y;
+    if (options.shadow) {
+      this.context.shadowColor = "rgba(0,0,0,0.3)";
+      this.context.shadowOffsetX = 5 * this.modifySizes;
+      this.context.shadowOffsetY = 5 * this.modifySizes;
+      this.context.shadowBlur = 14 * this.modifySizes;
+    }
+
+    this.context.beginPath();
+    this.context.fillText(text, x, y);
+    this.context.setTransform(1,0,0,1,0,0);
+
+    if (options.shadow) {
+      this.context.shadowOffsetX = 0;
+      this.context.shadowOffsetY = 0;
+      this.context.shadowBlur = 0;
+    }
+  }
+
   animate(time) {
     TWEEN.update(time);
 
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.bannerSpins <= 0
+        && this.spinButtonClick)
+    {
+      this.disableSpinButton();
+    }
+
+    this.context.clearRect(0, 0, this.canvas.width, this.canvasHeightForRender);
     this.drawRing(this.modifySizes);
+    this.drawBanner(this.modifySizes);
     this.drawFunction(this);
 
     window.requestAnimationFrame((time) => {

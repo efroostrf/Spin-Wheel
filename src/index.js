@@ -3,15 +3,19 @@ import 'regenerator-runtime/runtime';
 import { Wheel } from "./wheel";
 import { FRAMES } from "./frames";
 import { PrizeWindow } from './PrizeWindow';
+import { SpinSaver } from './spinsaver';
+
+console.log(FRAMES);
 
 function getRndInteger(min, max) {
   return Math.floor(Math.random() * (max - min) ) + min;
 }
 
 class CompleteWheel {
-  constructor(canvas, asset) {
+  constructor(canvas, asset, maxSpins) {
     this.prizes = {};
-    this.wheel = new Wheel(canvas, FRAMES, 475);
+    this.spinsStorage = new SpinSaver(maxSpins);
+    this.wheel = new Wheel(canvas, FRAMES, 475, 500, 75);
     this.onClickStart = function() {
       this.runRandom();
     };
@@ -98,16 +102,23 @@ class CompleteWheel {
     };
     
     this.wheel.startAnimation();
+
+    this.wheel.bannerSpins = this.spinsStorage.balance;
+
+    if (this.spinsStorage.balance === 0) this.onWin(this);
   
     this.wheel.onStart = () => {
+      this.spinsStorage.up();
+      this.wheel.bannerSpins = this.spinsStorage.balance;
       this.onClickStart(this);
     };
   
     this.wheel.bracketAnimation.on('stop', reason => {
       if (reason !== 'end') return;
       if (this.coin.text === 'none') {
+        this.wheel.resetSpinButton();
         this.onLose(this);
-        return this.wheel.resetSpinButton();
+        return;
       }
       
       this.prizeWindow.show(`${this.coin.text} ${this.coin.name}`);
@@ -117,8 +128,8 @@ class CompleteWheel {
 }
 
 var SPINWHEEL = {
-  create: function(canvas, asset = 'assets/sprites.png') {
-    return new CompleteWheel(canvas, asset);
+  create: function(canvas, asset = 'assets/sprites.png', maxSpins = 3) {
+    return new CompleteWheel(canvas, asset, maxSpins);
   }
 }
 
