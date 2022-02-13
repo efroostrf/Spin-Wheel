@@ -1,5 +1,8 @@
-class Animation {
+import { EventEmitter } from "eventemitter3";
+
+class Animation extends EventEmitter {
   constructor(start = 0, max = 10, step = 1, startFlag = false, yoyo = false) {
+    super();
     this.enabled = false;
     this.flag = startFlag;
     this.currentStep = start;
@@ -37,6 +40,7 @@ class Animation {
   stop(reason) {
     if (reason) this.stopReason = reason;
     this.enabled = false;
+    this.emit('stop', reason);
     clearInterval(this._interval);
   }
 

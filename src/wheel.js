@@ -1,31 +1,35 @@
 import { CanvasColides } from "./CanvasColides";
 import { Animation } from "./Animation";
 import TWEEN from "tween.js";
+import { EventEmitter } from "eventemitter3";
 
-class Wheel {
+class Wheel extends EventEmitter {
   /**
    * 
    * @param {String | Canvas} canvas HTML элемент с канвасом или ID канваса 
    */
-  constructor(canvas, frames) {
+  constructor(canvas, frames, width = 500) {
+    super();
     if (typeof canvas === 'string') this.canvas = document.getElementById(canvas);
     else this.canvas = canvas;
 
-    this.canvas.width = 500;
-    this.canvas.height = 500;
+    this.canvas.width = width;
+    this.canvas.height = width;
     this.prizes = {};
     this.frames = frames;
     this.wheelAssetImage = null;
     this.context = this.canvas.getContext('2d');
     this.colides = new CanvasColides(this.canvas);
     this._rotateAngle = 0;
-
+    this.modifySizes = 1;
     this.lightAnimation = new Animation(0, 1, 1, false, true);
     this.spinButtonAnimation = new Animation(0, 60, 0.5, false, true);
     this.bracketAnimation = new Animation(0, 100, 4, false, true);
     this.spinAnimation = new Animation(0, 360, 3, false, false);
 
     this.onStart = function () {};
+    this.drawFunction = function () {};
+    this.setupModifySizes();
     // this.context.imageSmoothingEnabled = false;
   }
 
@@ -41,6 +45,13 @@ class Wheel {
         resolve(true);
       };
     });
+  }
+
+  setupModifySizes() {
+    this.modifySizes = this.canvas.width / (this.frames['ring.png'].frame.w * 2);
+    this.modifySizes -= 0.15;
+
+    this.emit('update', this);
   }
 
   startAnimation() {
@@ -254,12 +265,10 @@ class Wheel {
 
   animate(time) {
     TWEEN.update(time);
+
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    var modifySizes = 0.5;
-
-    this.drawRing(modifySizes);
-    
+    this.drawRing(this.modifySizes);
+    this.drawFunction(this);
 
     window.requestAnimationFrame((time) => {
       this.animate(time);
