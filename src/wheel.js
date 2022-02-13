@@ -26,6 +26,7 @@ class Wheel extends EventEmitter {
     this.spinButtonAnimation = new Animation(0, 60, 0.5, false, true);
     this.bracketAnimation = new Animation(0, 100, 4, false, true);
     this.spinAnimation = new Animation(0, 360, 3, false, false);
+    this.spinButtonClick = false;
 
     this.onStart = function () {};
     this.drawFunction = function () {};
@@ -54,34 +55,51 @@ class Wheel extends EventEmitter {
     this.emit('update', this);
   }
 
+  resetSpinButton() {
+    this.spinButtonAnimation.step = 0.5;
+    this.spinButtonAnimation.start(10);
+    this.spinButtonClick = true;
+  }
+
+  disableSpinButton() {
+    this.spinButtonAnimation.stop('click');
+    this.spinButtonAnimation.currentStep = 0;
+    this.spinButtonClick = false;
+  }
+
   startAnimation() {
     window.requestAnimationFrame(() => {
       this.animate();
     });
 
-    this.spinButtonAnimation.start(10);
     this.lightAnimation.start(500);
+    this.resetSpinButton();
 
     this.colides.on('colide', object => {
       if (object.name === 'spinButton') {
+        if (!this.spinButtonAnimation.enabled) return;
+        if (!this.spinButtonClick) return;
         if (this.spinButtonAnimation.enabled) this.spinButtonAnimation.stop('colide');
+        
         this.canvas.style.cursor = 'pointer';
       }
     });
 
     this.colides.on('uncolide', object => {
       if (object.name === 'spinButton') {
+        if (!this.drawSpinButton) return;
         if (this.spinButtonAnimation.stopReason !== 'click') this.spinButtonAnimation.start();
-        this.canvas.style.cursor = 'auto';
       }
+      this.canvas.style.cursor = 'auto';
     });
 
     this.colides.on('click', objects => {
       if (objects.indexOf('spinButton') != -1) {
-        this.spinButtonAnimation.stop('click');
-        this.spinButtonAnimation.currentStep = 0;
+        if (!this.spinButtonClick) return;
         
-        this.onStart();
+        this.disableSpinButton();
+        this.canvas.style.cursor = 'pointer';
+        this.onStart(this);
       }
     });
   }

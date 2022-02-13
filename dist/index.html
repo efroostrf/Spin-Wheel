@@ -20,10 +20,38 @@
         font-family: 'MontserratMedium';
         src: url('assets/fonts/MontserratMedium.woff');
       }
+
+      .d-flex {
+        display: flex;
+      }
+
+      .fullscreen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #FullScreen {
+        justify-content: center;
+        align-items: center;
+      }
+      
+      #SpinWheelCanvas {
+        z-index: 10;
+      }
     </style>
   </head>
   <body>
-    <canvas id="SpinWheelCanvas"></canvas>
+    <div id="FullScreen" class="d-flex fullscreen">
+      <div class="d-flex">
+        <canvas id="SpinWheelCanvas"></canvas>
+      </div>
+      <canvas id="PageBackground" class="fullscreen"></canvas>
+    </div>
   </body>
 </html>
+<script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
 <script src="./bundle.js"></script>
+<script src="./index.js"></script>

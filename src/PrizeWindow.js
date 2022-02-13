@@ -23,7 +23,7 @@ class PrizeWindow extends EventEmitter {
     this.asset = asset;
     this.frames = frames;
     this.modifySizes = 1;
-    this.sunflowerAnimation = new Animation(0, 360, 1, false, false);
+    this.sunflowerAnimation = new Animation(0, 360, 0.5, false, false);
     this.inAnimationData = { 
       opacity: 0,
       scale: 0
@@ -194,6 +194,29 @@ class PrizeWindow extends EventEmitter {
       y: collectButtonY,
       centrize: true
     });
+
+    if (!wheel.colides.findObject('collectButton')) {
+      wheel.colides.addObject('collectButton', 
+                            this.canvas.width / 2 + (-(collectButton.frame.w * this.modifySizes) / 2),
+                            this.canvas.height / 2 + collectButtonY,
+                            collectButton.frame.w * this.modifySizes,
+                            collectButton.frame.h * this.modifySizes);
+      
+      wheel.colides.on('colide', object => {
+        if (object.name === 'collectButton') {
+          if (!this.enabled) return;
+          this.canvas.style.cursor = 'pointer';
+        }
+      })
+
+      wheel.colides.on('click', objects => {
+        if (objects.indexOf('collectButton') != -1) {
+          if (!this.enabled) return;
+          this.hide();
+          wheel.resetSpinButton();
+        }
+      })
+    }
 
     this.drawText('Collect now', 36, 'white', 'MontserratBold', {
       y: collectButtonY + ((collectButton.frame.h + 20) * this.modifySizes) / 2,

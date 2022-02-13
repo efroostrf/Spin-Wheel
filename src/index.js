@@ -2,117 +2,77 @@ import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import { Wheel } from "./wheel";
 import { FRAMES } from "./frames";
-import { loadImageFromSrc } from './loadImageFromSrc';
 import { PrizeWindow } from './PrizeWindow';
 
-(async function() {
-  var coinIcons = {
-    BCL: await loadImageFromSrc('assets/BCL.png'),
-    BNB: await loadImageFromSrc('assets/BNB.png'),
-    BTC: await loadImageFromSrc('assets/BTC.png'),
-    DOT: await loadImageFromSrc('assets/DOT.png'),
-    ENJ: await loadImageFromSrc('assets/ENJ.png'),
-    ETH: await loadImageFromSrc('assets/ETH.png'),
-    LINK: await loadImageFromSrc('assets/LINK.png'),
-    MATIC: await loadImageFromSrc('assets/MATIC.png'),
-    SHIB: await loadImageFromSrc('assets/SHIB.png'),
-    XLM: await loadImageFromSrc('assets/XLM.png'),
-    XRP: await loadImageFromSrc('assets/XRP.png'),
-    DOGE: await loadImageFromSrc('assets/DOGE.png'),
-    TRX: await loadImageFromSrc('assets/TRX.png'),
-    TUSD: await loadImageFromSrc('assets/TUSD.png')
-  };
+function getRndInteger(min, max) {
+  return Math.floor(Math.random() * (max - min) ) + min;
+}
 
-  var prizes = {
-    1: {
-      name: 'TRX',
-      icon: coinIcons.TRX,
-      text: '50.000'
-    },
-    3: {
-      name: 'BTC',
-      icon: coinIcons.BTC,
-      text: '0.0020'
-    },
-    5: {
-      name: 'TUSD',
-      icon: coinIcons.TUSD,
-      text: '25.000'
-    },
-    7: {
-      name: 'ETH',
-      icon: coinIcons.ETH,
-      text: '0.1500'
-    },
-    9: {
-      name: 'BTC',
-      icon: coinIcons.BTC,
-      text: '1.0000'
-    },
-    11: {
-      name: 'SHIB',
-      icon: coinIcons.SHIB,
-      text: '100.00'
-    },
-    13: {
-      name: 'TRX',
-      icon: coinIcons.TRX,
-      text: '1.0000'
-    },
-    15: {
-      name: 'DOGE',
-      icon: coinIcons.DOGE,
-      text: '50.000'
-    }
-  };
-
-  function getRndInteger(min, max) {
-    return Math.floor(Math.random() * (max - min) ) + min;
+class CompleteWheel {
+  constructor(canvas, asset) {
+    this.prizes = {};
+    this.wheel = new Wheel(canvas, FRAMES, 475);
+    this.onWin = function() {};
+    this.asset = asset;
+    this.coin = {};
+    this.random = null;
   }
 
-  var wheel = new Wheel('SpinWheelCanvas', FRAMES, 475);
+  setPrizes(prizes) {
+    this.prizes = prizes;
+    this.wheel.prizes = prizes;
+  }
 
-  await wheel.setWheelAsset('assets/sprites.png');
-
-  wheel.prizes = prizes;
-
-  var prizeWindow = new PrizeWindow(wheel.canvas, wheel.wheelAssetImage, FRAMES);
-
-  prizeWindow.modifySizes = wheel.modifySizes;
-
-  wheel.on('update', (newWheel) => {
-    prizeWindow.canvas = newWheel.canvas;
-    prizeWindow.modifySizes = newWheel.modifySizes;
-    prizeWindow.asset = newWheel.wheelAssetImage;
-  });
-
-  wheel.drawFunction = () => {
-    prizeWindow.draw();
-  };
+  async build() {
+    await this.wheel.setWheelAsset(this.asset);
   
-  wheel.startAnimation();
+    this.prizeWindow = new PrizeWindow(this.wheel.canvas, this.wheel.wheelAssetImage, FRAMES);
   
-  wheel.onStart = () => {
-    var random = getRndInteger(1, 16);
-
-    if (wheel.spinAnimation.enabled) return;
-
-    var coin = wheel.prizes[random];
-    if (!coin) {
-      coin = {
-        name: false,
-        text: false
-      };
-    }
-
-    console.log(`random selected: ${random}, it's ${coin.name}:${coin.text}`);
-    wheel.speedRotateRingToPrize(random);
-    wheel.bracketAnimation.on('stop', reason => {
-      if (reason !== 'end') return;
-      console.log('end');
-      prizeWindow.show(`${coin.text} ${coin.name}`);
+    this.prizeWindow.modifySizes = this.wheel.modifySizes;
+  
+    this.wheel.on('update', (newWheel) => {
+      this.prizeWindow.canvas = this.newWheel.canvas;
+      this.prizeWindow.modifySizes = this.newWheel.modifySizes;
+      this.prizeWindow.asset = this.newWheel.wheelAssetImage;
     });
-  };
-  console.log(wheel);
-})();
+  
+    this.wheel.drawFunction = (wheel) => {
+      this.prizeWindow.draw(this.wheel);
+    };
+    
+    this.wheel.startAnimation();
+  
+    this.wheel.onStart = () => {
+      this.random = getRndInteger(1, 16);
+  
+      if (this.wheel.spinAnimation.enabled) return;
+  
+      this.coin = this.wheel.prizes[this.random];
+  
+      if (!this.coin) {
+        this.coin = {
+          name: false,
+          text: 'none'
+        };
+      }
+  
+      this.wheel.speedRotateRingToPrize(this.random);
+    };
+  
+    this.wheel.bracketAnimation.on('stop', reason => {
+      if (reason !== 'end') return;
+      if (this.coin.text === 'none') return this.wheel.resetSpinButton();
+      
+      this.prizeWindow.show(`${this.coin.text} ${this.coin.name}`);
+      this.onWin(this.random, this.coin, this);
+    });
+  }
+}
 
+var SPINWHEEL = {
+  create: function(canvas, asset = 'assets/sprites.png') {
+    return new CompleteWheel(canvas, asset);
+  }
+}
+
+window.SPINWHEEL = SPINWHEEL;

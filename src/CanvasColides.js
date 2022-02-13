@@ -18,8 +18,8 @@ class CanvasColides extends EventEmitter {
     };
 
     canvas.addEventListener('mousemove', (event) => {
-      this.mouse.x = event.clientX;
-      this.mouse.y = event.clientY;
+      this.mouse.x = event.offsetX;
+      this.mouse.y = event.offsetY;
       this.loop();
     });
 
