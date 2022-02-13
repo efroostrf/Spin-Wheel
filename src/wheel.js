@@ -1,4 +1,6 @@
 import { CanvasColides } from "./CanvasColides";
+import { Animation } from "./Animation";
+import TWEEN from "tween.js";
 
 class Wheel {
   /**
@@ -16,17 +18,14 @@ class Wheel {
     this.wheelAssetImage = null;
     this.context = this.canvas.getContext('2d');
     this.colides = new CanvasColides(this.canvas);
-    this.blinkIntervalMS = 500; // Скорость смены огней на колесе
-    this._blinkInterval = null;
-    this._blinkState = false;
     this._rotateAngle = 0;
 
-    this._spinButtonAnimationInterval = null;
-    this.spinButtonAnimation = 0;
-    this.spinButtonAnimationMax = 60;
-    this.spinButtonAnimationMS = 10;
-    this.spinButtonAnimationFlag = false;
-    this.spinButtonAnimationEnabled = true;
+    this.lightAnimation = new Animation(0, 1, 1, false, true);
+    this.spinButtonAnimation = new Animation(0, 60, 0.5, false, true);
+    this.bracketAnimation = new Animation(0, 100, 4, false, true);
+    this.spinAnimation = new Animation(0, 360, 3, false, false);
+
+    this.onStart = function () {};
     // this.context.imageSmoothingEnabled = false;
   }
 
@@ -49,21 +48,31 @@ class Wheel {
       this.animate();
     });
 
-    this._blinkInterval = setInterval(() => {
-      this._blinkState = !this._blinkState;
-    }, this.blinkIntervalMS);
+    this.spinButtonAnimation.start(10);
+    this.lightAnimation.start(500);
 
-    this._spinButtonAnimationInterval = setInterval(() => {
-      if (!this.spinButtonAnimationEnabled) return;
-      
-      if (this.spinButtonAnimationFlag) {
-        this.spinButtonAnimation -= 0.5;
-        if (this.spinButtonAnimation <= 0) this.spinButtonAnimationFlag = !this.spinButtonAnimationFlag;
-      } else {
-        this.spinButtonAnimation += 0.5;
-        if (this.spinButtonAnimation >= this.spinButtonAnimationMax) this.spinButtonAnimationFlag = !this.spinButtonAnimationFlag;
+    this.colides.on('colide', object => {
+      if (object.name === 'spinButton') {
+        if (this.spinButtonAnimation.enabled) this.spinButtonAnimation.stop('colide');
+        this.canvas.style.cursor = 'pointer';
       }
-    }, this.spinButtonAnimationMS);
+    });
+
+    this.colides.on('uncolide', object => {
+      if (object.name === 'spinButton') {
+        if (this.spinButtonAnimation.stopReason !== 'click') this.spinButtonAnimation.start();
+        this.canvas.style.cursor = 'auto';
+      }
+    });
+
+    this.colides.on('click', objects => {
+      if (objects.indexOf('spinButton') != -1) {
+        this.spinButtonAnimation.stop('click');
+        this.spinButtonAnimation.currentStep = 0;
+        
+        this.onStart();
+      }
+    });
   }
 
   rotateContext(degree) {
@@ -71,14 +80,13 @@ class Wheel {
     this.context.rotate(degree * Math.PI/180);
   }
 
-  drawFrame(frame, modifySize = 1, position = 'center', flipX = false) {
+  drawFrame(frame, modifySize = 1, position = {}, flipX = false) {
     var x = frame.frame.x;
     var y = frame.frame.y;
     var width = frame.frame.w;
     var height = frame.frame.h;
     var dX;
     var dY;
-    // position = center / { x: *, y: * }
 
     if (position.x) dX = position.x;
     if (position.y) dY = position.y;
@@ -114,7 +122,6 @@ class Wheel {
       this.context.rotate(180 * Math.PI/180);
       this.context.rotate(((prizesDegreeInterval * (i - 1))) * Math.PI/180);
 
-      // console.log(prize);
       var iconSize = 40;
       var iconSizeModified = iconSize * modifySizes;
       var dX = (ring.frame.w - 90) * modifySizes;
@@ -149,18 +156,26 @@ class Wheel {
     var button = this.frames['spin_button.png'];
     var buttonText = this.frames['spin_text.png'];
 
-    modifySizes += this.spinButtonAnimation / 800;
+    modifySizes += this.spinButtonAnimation.currentStep / 800;
 
     this.drawFrame(button, modifySizes, { 
       x: -(button.frame.w * modifySizes) / 2,
       centrize: true
     });
 
-    this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
-    this.context.rotate((this.spinButtonAnimation / 6) * Math.PI/180);
+    if (!this.colides.findObject('spinButton')) {
+      this.colides.addObject('spinButton', 
+                            this.canvas.width / 2 + (-(button.frame.w * modifySizes) / 2),
+                            this.canvas.height / 2 + (-(button.frame.h * modifySizes) / 2),
+                            button.frame.w * modifySizes,
+                            button.frame.h * modifySizes);
+    }
 
-    this.drawFrame(buttonText, modifySizes - 0.05 + this.spinButtonAnimation / 400, { 
-      x: -(buttonText.frame.w * (modifySizes - 0.05 + this.spinButtonAnimation / 400)) / 2
+    this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
+    this.context.rotate((this.spinButtonAnimation.currentStep / 6) * Math.PI/180);
+
+    this.drawFrame(buttonText, modifySizes - 0.05 + this.spinButtonAnimation.currentStep / 400, { 
+      x: -(buttonText.frame.w * (modifySizes - 0.05 + this.spinButtonAnimation.currentStep / 400)) / 2
     });
   }
 
@@ -168,7 +183,7 @@ class Wheel {
     var light = this.frames['light.png'];
     var lightCount = 16;
     var lightDegreeInterval = (360 / lightCount);
-    var lastLightFlag = this._blinkState;
+    var lastLightFlag = Boolean(this.lightAnimation.currentStep);
 
     for (let i = 0; i < lightCount; i++) {
       if (!lastLightFlag) {
@@ -188,9 +203,37 @@ class Wheel {
     }
   }
 
-  drawRing(modifySizes = 1) {
-    var ring = this.frames['ring.png'];
+  drawRingBracket(modifySizes = 1, ring) {
     var bracket = this.frames['bracket.png'];
+
+    modifySizes += this.bracketAnimation.currentStep / 1000;
+
+    this.drawFrame(bracket, modifySizes, {
+      x: -(20 * (this.bracketAnimation.currentStep + 100) / 100) * modifySizes,
+      centrize: true
+    });
+  }
+
+  speedRotateRingToPrize(prizeNumber = 1) {
+    var totalDegreesesToSpin = 360 * 4 + 180 +  (360 - (prizeNumber - 1) * (360 / 16));
+    var rotate = {
+      degress: 0
+    };
+
+    var tween = new TWEEN.Tween(rotate)
+                         .to({ degress: totalDegreesesToSpin }, 4500)
+                         .easing(TWEEN.Easing.Cubic.Out)
+                         .onUpdate(() => {
+                            this.spinAnimation.setStep(rotate.degress);
+                          })
+                          .onComplete(() => {
+                            this.bracketAnimation.start(10, 1);
+                          }).start();
+  }
+
+  drawRing(modifySizes = 1) {
+    this._rotateAngle = this.spinAnimation.currentStep;
+    var ring = this.frames['ring.png'];
 
     this.context.translate(this.canvas.width / 2, this.canvas.height / 2); 
     this.context.rotate(this._rotateAngle * Math.PI/180);
@@ -205,16 +248,12 @@ class Wheel {
  
     this.drawRingLights(modifySizes, ring);
     this.drawRingPrizes(modifySizes, ring);
-  
-    this.drawFrame(bracket, modifySizes, {
-      x: -20 * modifySizes,
-      centrize: true
-    });
-
+    this.drawRingBracket(modifySizes, ring);
     this.drawSpinButton(modifySizes, ring);
   }
 
-  animate() {
+  animate(time) {
+    TWEEN.update(time);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     var modifySizes = 0.5;
@@ -222,8 +261,8 @@ class Wheel {
     this.drawRing(modifySizes);
     
 
-    window.requestAnimationFrame(() => {
-      this.animate();
+    window.requestAnimationFrame((time) => {
+      this.animate(time);
     });
   }
 }

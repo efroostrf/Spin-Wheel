@@ -24,44 +24,74 @@ import { loadImageFromSrc } from './loadImageFromSrc';
 
   var prizes = {
     1: {
+      name: 'TRX',
       icon: coinIcons.TRX,
       text: '50.000'
     },
     3: {
+      name: 'BTC',
       icon: coinIcons.BTC,
       text: '0.0020'
     },
     5: {
+      name: 'TUSD',
       icon: coinIcons.TUSD,
       text: '25.000'
     },
     7: {
+      name: 'ETH',
       icon: coinIcons.ETH,
       text: '0.1500'
     },
     9: {
+      name: 'BTC',
       icon: coinIcons.BTC,
       text: '1.0000'
     },
     11: {
+      name: 'SHIB',
       icon: coinIcons.SHIB,
       text: '100.00'
     },
     13: {
+      name: 'TRX',
       icon: coinIcons.TRX,
       text: '1.0000'
     },
     15: {
+      name: 'DOGE',
       icon: coinIcons.DOGE,
       text: '50.000'
     }
   };
+
+  function getRndInteger(min, max) {
+    return Math.floor(Math.random() * (max - min) ) + min;
+  }
 
   var wheel = new Wheel('SpinWheelCanvas', FRAMES);
   wheel.prizes = prizes;
   await wheel.setWheelAsset('assets/sprites.png');
   
   wheel.startAnimation();
+
+
+  wheel.onStart = () => {
+    var random = getRndInteger(1, 16);
+
+    if (wheel.spinAnimation.enabled) return;
+
+    var coin = wheel.prizes[random];
+    if (!coin) {
+      coin = {
+        name: false,
+        text: false
+      };
+    }
+
+    console.log(`random selected: ${random}, it's ${coin.name}:${coin.text}`);
+    wheel.speedRotateRingToPrize(random);
+  };
   // setInterval(() => {
   //   wheel._rotateAngle += 0.6;
   // }, 10);
