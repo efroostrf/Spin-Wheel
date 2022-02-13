@@ -12,7 +12,11 @@ class CompleteWheel {
   constructor(canvas, asset) {
     this.prizes = {};
     this.wheel = new Wheel(canvas, FRAMES, 475);
+    this.onClickStart = function() {
+      this.runRandom();
+    };
     this.onWin = function() {};
+    this.onLose = function() {};
     this.asset = asset;
     this.coin = {};
     this.random = null;
@@ -21,6 +25,59 @@ class CompleteWheel {
   setPrizes(prizes) {
     this.prizes = prizes;
     this.wheel.prizes = prizes;
+  }
+
+  runLose() {
+    if (this.wheel.spinAnimation.enabled) return;
+    
+    var variants = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    var prizeVariants = Object.keys(this.wheel.prizes);
+
+    for (let index in prizeVariants) {
+      let prizeNumber = Number(prizeVariants[index]);
+      variants.splice( variants.indexOf(prizeNumber), 1 );
+    }
+
+    this.random = getRndInteger(0, variants.length);
+
+    this.coin = {
+      name: false,
+      text: 'none'
+    };
+    this.wheel.speedRotateRingToPrize(variants[this.random]);
+  }
+
+  runWin() {
+    if (this.wheel.spinAnimation.enabled) return;
+
+    var prizesIds = Object.keys(this.wheel.prizes);
+    var randomPrize = getRndInteger(0, prizesIds.length);
+
+    this.coin = this.wheel.prizes[ prizesIds[randomPrize] ];
+    this.wheel.speedRotateRingToPrize(prizesIds[randomPrize]);
+  }
+
+  runRandom() {
+    if (this.wheel.spinAnimation.enabled) return;
+
+    this.random = getRndInteger(1, 16);
+    this.coin = this.wheel.prizes[this.random];
+
+    if (!this.coin) {
+      this.coin = {
+        name: false,
+        text: 'none'
+      };
+    }
+
+    this.wheel.speedRotateRingToPrize(this.random);
+  }
+
+  runSelected(index) {
+    if (this.wheel.spinAnimation.enabled) return;
+
+    this.coin = this.wheel.prizes[index];
+    this.wheel.speedRotateRingToPrize(index);
   }
 
   async build() {
@@ -43,25 +100,15 @@ class CompleteWheel {
     this.wheel.startAnimation();
   
     this.wheel.onStart = () => {
-      this.random = getRndInteger(1, 16);
-  
-      if (this.wheel.spinAnimation.enabled) return;
-  
-      this.coin = this.wheel.prizes[this.random];
-  
-      if (!this.coin) {
-        this.coin = {
-          name: false,
-          text: 'none'
-        };
-      }
-  
-      this.wheel.speedRotateRingToPrize(this.random);
+      this.onClickStart(this);
     };
   
     this.wheel.bracketAnimation.on('stop', reason => {
       if (reason !== 'end') return;
-      if (this.coin.text === 'none') return this.wheel.resetSpinButton();
+      if (this.coin.text === 'none') {
+        this.onLose(this);
+        return this.wheel.resetSpinButton();
+      }
       
       this.prizeWindow.show(`${this.coin.text} ${this.coin.name}`);
       this.onWin(this.random, this.coin, this);

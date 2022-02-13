@@ -41,7 +41,7 @@ const jsConfetti = new JSConfetti({ backgroundCanvas });
     3: {
       name: 'BTC',
       icon: coinIcons.BTC,
-      text: '0.0020'
+      text: '0.2900'
     },
     5: {
       name: 'TUSD',
@@ -80,8 +80,20 @@ const jsConfetti = new JSConfetti({ backgroundCanvas });
 
   wheel.setPrizes(prizes);
 
+  var rotatedCount = 0;
+
   wheel.onWin = () => {
     jsConfetti.addConfetti();
+    rotatedCount++;
   };
-  console.log(wheel);
+
+  wheel.onLose = () => {
+    rotatedCount++;
+  };
+
+  wheel.onClickStart = () => {
+    if (rotatedCount == 2) wheel.runSelected(3);
+    else if (rotatedCount > 2) wheel.runRandom();
+    else wheel.runLose();
+  };
 })();
