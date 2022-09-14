@@ -10,7 +10,7 @@ async function loadImageFromSrc(src) {
   });
 }
 
-var wheel = SPINWHEEL.create('SpinWheelCanvas');
+var wheel = SPINWHEEL.create('SpinWheelCanvas', 'assets/sprites.png', 999);
 var backgroundCanvas = document.getElementById('PageBackground');
 const jsConfetti = new JSConfetti({ backgroundCanvas });
 
@@ -84,9 +84,7 @@ const jsConfetti = new JSConfetti({ backgroundCanvas });
   wheel.setPrizes(prizes);
 
   wheel.onClickStart = () => {
-    if (wheel.spinsStorage.maxSpins == 0) return wheel.runRandom();
-    if (wheel.spinsStorage.balance == 0) wheel.runSelected(3);
-    else wheel.runLose();
+    wheel.runRandom();
   };
 
 })();
