@@ -74,7 +74,9 @@ function startWheel () {
     await wheel.build();
   
     wheel.onClickStart = () => {
-      return wheel.runRandom();
+      if (wheel.spinsStorage.maxSpins == 0) return wheel.runRandom();
+      if (wheel.spinsStorage.balance == 0) wheel.runSelected(3);
+      else wheel.runLose();
     };
   
     wheel.onClickCollectButton = () => {
